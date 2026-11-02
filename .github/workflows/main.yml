@@ -1,1 +1,32 @@
+name: CI
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -T -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /home/ubuntu/be
+            git pull origin main
+            sudo docker stop food_be food_ordering_be || true
+            sudo docker rm food_be food_ordering_be || true
+            sudo docker build -t food_ordering_be:latest .
+            sudo docker run -d \
+              --name food_be \
+              --restart always \
+              -p 127.0.0.1:3000:3000 \
+              food_ordering_be:latest
+            sudo docker system prune -f
+          EOF
