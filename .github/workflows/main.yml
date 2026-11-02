@@ -27,6 +27,7 @@ jobs:
               --name food_be \
               --restart always \
               -p 127.0.0.1:3000:3000 \
+              --env-file .env
               food_ordering_be:latest
             sudo docker system prune -f
           EOF
